@@ -47,3 +47,6 @@ create_database.py
 
 # Test files
 test_*.py
+
+# Local password file
+local_password.txt
