@@ -1,0 +1,19 @@
+# Flask and extensions
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+
+# Database drivers
+PyMySQL==1.1.0
+cryptography==41.0.7
+
+# Security
+Werkzeug==3.0.1
+
+# SQLAlchemy (Updated for Python 3.13 compatibility)
+SQLAlchemy==2.0.35
+
+# For production server (optional)
+gunicorn==21.2.0
+
+# Development tools (optional)
+python-dotenv==1.0.0

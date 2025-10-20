@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Sensitive data - DO NOT COMMIT
+backend/config.py
+
+# PowerShell scripts with local paths
+start_server.ps1
+manual_test_commands.ps1
+
+# Database setup with local paths
+create_database.py
+
+# Test files
+test_*.py
