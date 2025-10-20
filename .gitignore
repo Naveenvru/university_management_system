@@ -38,9 +38,6 @@ desktop.ini
 .env
 .env.local
 
-# Sensitive data - DO NOT COMMIT
-backend/config.py
-
 # PowerShell scripts with local paths
 start_server.ps1
 manual_test_commands.ps1
