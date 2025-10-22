@@ -47,6 +47,25 @@ create_database.py
 
 # Test files
 test_*.py
+check_*.py
 
-# Local password file
+# Documentation (keep only README.md)
+*_SUMMARY.md
+*_GUIDE.md
+*_UPDATE.md
+CORRECTED_*.md
+IMPLEMENTATION_*.md
+LATEST_*.md
+API_TESTING_*.md
+QUICKSTART.md
+FEATURE_COMPARISON.md
+CONNECTION_VERIFICATION.md
+*_VERIFICATION.md
+*_COMPARISON.md
+
+# Local password files
+local_password.txt
+
+# Temporary SQL scripts
+update_*.sql# Local password file
 local_password.txt

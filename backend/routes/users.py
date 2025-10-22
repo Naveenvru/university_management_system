@@ -64,11 +64,14 @@ def create_user():
 def get_users():
     """Get all users using SELECT with optional filtering"""
     try:
+        print("=== GET /api/users/ called ===")
         role = request.args.get('role')
         is_active = request.args.get('is_active')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         offset = (page - 1) * per_page
+        
+        print(f"Params: role={role}, is_active={is_active}, page={page}, per_page={per_page}")
         
         # Build WHERE clause
         conditions = []
@@ -98,18 +101,27 @@ def get_users():
             {where_clause}
         """)
         
+        print(f"Executing query with params: {params}")
         users = db.session.execute(query, params).fetchall()
-        total = db.session.execute(count_query, {k: v for k, v in params.items() if k not in ['limit', 'offset']}).scalar()
+        print(f"Fetched {len(users)} users")
         
-        return jsonify({
+        total = db.session.execute(count_query, {k: v for k, v in params.items() if k not in ['limit', 'offset']}).scalar()
+        print(f"Total count: {total}")
+        
+        result = {
             'users': [dict(row._mapping) for row in users],
             'total': total,
             'page': page,
             'per_page': per_page,
             'pages': (total + per_page - 1) // per_page if total > 0 else 0
-        }), 200
+        }
+        print(f"Returning result with {len(result['users'])} users")
+        return jsonify(result), 200
         
     except Exception as e:
+        print(f"ERROR in get_users: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

@@ -10,28 +10,53 @@ def create_grade():
     try:
         data = request.get_json()
         
-        internal = data.get('internal_marks', 0.00)
-        midterm = data.get('midterm_marks', 0.00)
-        final = data.get('final_marks', 0.00)
-        total = internal + midterm + final
+        # Get IA and Assignment marks
+        ia_marks = data.get('ia_marks')  # out of 30
+        assignment_marks = data.get('assignment_marks')  # out of 20
+        external_marks = data.get('external_marks')  # out of 100
         
-        max_marks = 100
-        percentage = (total / max_marks) * 100 if max_marks > 0 else 0
-        letter_grade = calculate_letter_grade(percentage)
+        # Calculate Final IA (IA + Assignment = max 50)
+        final_ia_marks = None
+        if ia_marks is not None and assignment_marks is not None:
+            final_ia_marks = float(ia_marks) + float(assignment_marks)  # Direct addition (30 + 20 = 50)
+        
+        # Convert external marks from 100 to 50
+        external_marks_50 = None
+        if external_marks is not None:
+            external_marks_50 = float(external_marks) / 2
+        
+        # Calculate total marks (out of 100)
+        total_marks = 0
+        if final_ia_marks is not None:
+            total_marks += final_ia_marks
+        if external_marks_50 is not None:
+            total_marks += external_marks_50
+        
+        # Calculate percentage
+        percentage = total_marks if total_marks > 0 else 0
+        
+        # Calculate letter grade
+        letter_grade = calculate_letter_grade(percentage) if total_marks > 0 else None
+        
+        # Debug logging
+        print(f"DEBUG CREATE - IA: {ia_marks}, Assignment: {assignment_marks}, External(input): {external_marks}")
+        print(f"DEBUG CREATE - Final IA: {final_ia_marks}, External(stored): {external_marks_50}")
+        print(f"DEBUG CREATE - Total: {total_marks}, Percentage: {percentage}, Grade: {letter_grade}")
         
         insert_query = text("""
             INSERT INTO grades 
-            (enrollment_id, internal_marks, midterm_marks, final_marks, total_marks, percentage, letter_grade)
+            (enrollment_id, ia_marks, assignment_marks, final_ia_marks, external_marks, total_marks, percentage, letter_grade)
             VALUES 
-            (:enrollment_id, :internal_marks, :midterm_marks, :final_marks, :total_marks, :percentage, :letter_grade)
+            (:enrollment_id, :ia_marks, :assignment_marks, :final_ia_marks, :external_marks, :total_marks, :percentage, :letter_grade)
         """)
         
         result = db.session.execute(insert_query, {
             'enrollment_id': data['enrollment_id'],
-            'internal_marks': internal,
-            'midterm_marks': midterm,
-            'final_marks': final,
-            'total_marks': total,
+            'ia_marks': ia_marks,
+            'assignment_marks': assignment_marks,
+            'final_ia_marks': final_ia_marks,
+            'external_marks': external_marks_50,
+            'total_marks': total_marks,
             'percentage': percentage,
             'letter_grade': letter_grade
         })
@@ -58,6 +83,8 @@ def get_grades():
         query = text("""
             SELECT 
                 g.*,
+                e.student_id,
+                e.course_id,
                 s.enrollment_number,
                 u.first_name as student_first_name,
                 u.last_name as student_last_name,
@@ -110,21 +137,45 @@ def update_grade(grade_id):
         if not current:
             return jsonify({'error': 'Grade not found'}), 404
         
-        # Calculate new totals
-        internal = data.get('internal_marks', current.internal_marks)
-        midterm = data.get('midterm_marks', current.midterm_marks)
-        final = data.get('final_marks', current.final_marks)
-        total = internal + midterm + final
+        # Get IA and Assignment marks
+        ia_marks = data.get('ia_marks', current.ia_marks)  # out of 30
+        assignment_marks = data.get('assignment_marks', current.assignment_marks)  # out of 20
+        external_marks_input = data.get('external_marks')  # This will be out of 100 from frontend
         
-        max_marks = 100
-        percentage = (total / max_marks) * 100 if max_marks > 0 else 0
-        letter_grade = calculate_letter_grade(percentage)
+        # Calculate Final IA (IA + Assignment = max 50)
+        final_ia_marks = None
+        if ia_marks is not None and assignment_marks is not None:
+            final_ia_marks = float(ia_marks) + float(assignment_marks)  # Direct addition (30 + 20 = 50)
+        
+        # Convert external marks from 100 to 50 (only if provided in update)
+        external_marks_50 = current.external_marks  # Keep existing if not updated
+        if external_marks_input is not None:
+            external_marks_50 = float(external_marks_input) / 2
+        
+        # Calculate total marks (out of 100)
+        total_marks = 0
+        if final_ia_marks is not None:
+            total_marks += final_ia_marks
+        if external_marks_50 is not None:
+            total_marks += external_marks_50
+        
+        # Calculate percentage
+        percentage = total_marks if total_marks > 0 else 0
+        
+        # Calculate letter grade
+        letter_grade = calculate_letter_grade(percentage) if total_marks > 0 else None
+        
+        # Debug logging
+        print(f"DEBUG UPDATE - IA: {ia_marks}, Assignment: {assignment_marks}, External(input): {external_marks_input}")
+        print(f"DEBUG UPDATE - Final IA: {final_ia_marks}, External(stored): {external_marks_50}")
+        print(f"DEBUG UPDATE - Total: {total_marks}, Percentage: {percentage}, Grade: {letter_grade}")
         
         update_query = text("""
             UPDATE grades 
-            SET internal_marks = :internal_marks,
-                midterm_marks = :midterm_marks,
-                final_marks = :final_marks,
+            SET ia_marks = :ia_marks,
+                assignment_marks = :assignment_marks,
+                final_ia_marks = :final_ia_marks,
+                external_marks = :external_marks,
                 total_marks = :total_marks,
                 percentage = :percentage,
                 letter_grade = :letter_grade
@@ -133,10 +184,11 @@ def update_grade(grade_id):
         
         db.session.execute(update_query, {
             'grade_id': grade_id,
-            'internal_marks': internal,
-            'midterm_marks': midterm,
-            'final_marks': final,
-            'total_marks': total,
+            'ia_marks': ia_marks,
+            'assignment_marks': assignment_marks,
+            'final_ia_marks': final_ia_marks,
+            'external_marks': external_marks_50,
+            'total_marks': total_marks,
             'percentage': percentage,
             'letter_grade': letter_grade
         })

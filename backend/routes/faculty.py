@@ -146,3 +146,38 @@ def delete_faculty(faculty_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+# Get courses assigned to a faculty member
+@bp.route('/<int:faculty_id>/courses', methods=['GET'])
+def get_faculty_courses(faculty_id):
+    try:
+        query = text("""
+            SELECT 
+                c.course_id,
+                c.course_code,
+                c.course_name,
+                c.department_id,
+                c.credits,
+                c.semester,
+                c.max_students,
+                c.total_classes,
+                fc.academic_year,
+                fc.is_active
+            FROM faculty_courses fc
+            JOIN courses c ON fc.course_id = c.course_id
+            WHERE fc.faculty_id = :faculty_id 
+            AND fc.is_active = 1
+            ORDER BY c.course_code
+        """)
+        
+        courses = db.session.execute(query, {'faculty_id': faculty_id}).fetchall()
+        
+        course_list = [dict(course._mapping) for course in courses]
+        
+        return jsonify({
+            'courses': course_list,
+            'count': len(course_list)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

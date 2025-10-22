@@ -62,6 +62,8 @@ def get_attendance():
         query = text(f"""
             SELECT 
                 a.*,
+                e.student_id,
+                e.course_id,
                 s.enrollment_number,
                 u.first_name as student_first_name,
                 u.last_name as student_last_name,

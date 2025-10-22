@@ -1,10 +1,15 @@
 from flask import Flask, render_template, jsonify
+from flask_cors import CORS
 from config import Config
 from database import db
+from sqlalchemy import text
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Enable CORS for all routes
+CORS(app)
 
 # Initialize database with app
 db.init_app(app)
@@ -32,7 +37,7 @@ def health_check():
     """API health check"""
     try:
         # Test database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
             'database': 'connected',
@@ -52,7 +57,10 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
-    return jsonify({'error': 'Internal server error'}), 500
+    print(f"ERROR 500: {str(error)}")  # Log the error
+    import traceback
+    traceback.print_exc()  # Print full traceback
+    return jsonify({'error': 'Internal server error', 'details': str(error)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
