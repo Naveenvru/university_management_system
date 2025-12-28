@@ -12,14 +12,13 @@ def create_faculty():
         
         insert_query = text("""
             INSERT INTO faculty 
-            (user_id, employee_id, department_id, designation, qualification, joining_date, status, created_at)
+            (user_id, department_id, designation, qualification, joining_date, status, created_at)
             VALUES 
-            (:user_id, :employee_id, :department_id, :designation, :qualification, :joining_date, :status, NOW())
+            (:user_id, :department_id, :designation, :qualification, :joining_date, :status, NOW())
         """)
         
         result = db.session.execute(insert_query, {
             'user_id': data['user_id'],
-            'employee_id': data['employee_id'],
             'department_id': data['department_id'],
             'designation': data['designation'],
             'qualification': data['qualification'],
@@ -161,12 +160,11 @@ def get_faculty_courses(faculty_id):
                 c.semester,
                 c.max_students,
                 c.total_classes,
-                fc.academic_year,
-                fc.is_active
-            FROM faculty_courses fc
-            JOIN courses c ON fc.course_id = c.course_id
-            WHERE fc.faculty_id = :faculty_id 
-            AND fc.is_active = 1
+                c.created_at,
+                d.department_name
+            FROM courses c
+            INNER JOIN departments d ON c.department_id = d.department_id
+            WHERE c.faculty_id = :faculty_id
             ORDER BY c.course_code
         """)
         

@@ -7,9 +7,9 @@ const enrollmentService = {
     return response.data;
   },
 
-  // Get enrollment by ID
-  getById: async (id) => {
-    const response = await api.get(`/enrollments/${id}`);
+  // Get enrollment by composite key (student_id, course_id)
+  getById: async (student_id, course_id) => {
+    const response = await api.get(`/enrollments/${student_id}/${course_id}`);
     return response.data;
   },
 
@@ -20,14 +20,14 @@ const enrollmentService = {
   },
 
   // Update enrollment
-  update: async (id, enrollmentData) => {
-    const response = await api.put(`/enrollments/${id}`, enrollmentData);
+  update: async (student_id, course_id, enrollmentData) => {
+    const response = await api.put(`/enrollments/${student_id}/${course_id}`, enrollmentData);
     return response.data;
   },
 
   // Delete enrollment
-  delete: async (id) => {
-    const response = await api.delete(`/enrollments/${id}`);
+  delete: async (student_id, course_id) => {
+    const response = await api.delete(`/enrollments/${student_id}/${course_id}`);
     return response.data;
   },
 };

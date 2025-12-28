@@ -10,52 +10,40 @@ def create_grade():
     try:
         data = request.get_json()
         
-        # Get IA and Assignment marks
-        ia_marks = data.get('ia_marks')  # out of 30
-        assignment_marks = data.get('assignment_marks')  # out of 20
-        external_marks = data.get('external_marks')  # out of 100
+        # Get marks with new schema (internal1, internal2, external) - all out of 50
+        internal1_marks = data.get('internal1_marks', 0.00)
+        internal2_marks = data.get('internal2_marks', 0.00)
+        external_marks = data.get('external_marks', 0.00)
         
-        # Calculate Final IA (IA + Assignment = max 50)
-        final_ia_marks = None
-        if ia_marks is not None and assignment_marks is not None:
-            final_ia_marks = float(ia_marks) + float(assignment_marks)  # Direct addition (30 + 20 = 50)
+        # Calculate average of two internals (out of 50)
+        internal_average = (float(internal1_marks) + float(internal2_marks)) / 2
         
-        # Convert external marks from 100 to 50
-        external_marks_50 = None
-        if external_marks is not None:
-            external_marks_50 = float(external_marks) / 2
+        # Calculate total marks (out of 100): average of internals + external
+        total_marks = internal_average + float(external_marks)
         
-        # Calculate total marks (out of 100)
-        total_marks = 0
-        if final_ia_marks is not None:
-            total_marks += final_ia_marks
-        if external_marks_50 is not None:
-            total_marks += external_marks_50
-        
-        # Calculate percentage
+        # Calculate percentage (already out of 100, so total_marks IS the percentage)
         percentage = total_marks if total_marks > 0 else 0
         
-        # Calculate letter grade
+        # Calculate letter grade based on percentage
         letter_grade = calculate_letter_grade(percentage) if total_marks > 0 else None
         
         # Debug logging
-        print(f"DEBUG CREATE - IA: {ia_marks}, Assignment: {assignment_marks}, External(input): {external_marks}")
-        print(f"DEBUG CREATE - Final IA: {final_ia_marks}, External(stored): {external_marks_50}")
-        print(f"DEBUG CREATE - Total: {total_marks}, Percentage: {percentage}, Grade: {letter_grade}")
+        print(f"DEBUG CREATE - Internal1: {internal1_marks}, Internal2: {internal2_marks}, External: {external_marks}")
+        print(f"DEBUG CREATE - Internal Avg: {internal_average:.2f}, Total: {total_marks:.2f}/100, Percentage: {percentage:.2f}%, Grade: {letter_grade}")
         
         insert_query = text("""
             INSERT INTO grades 
-            (enrollment_id, ia_marks, assignment_marks, final_ia_marks, external_marks, total_marks, percentage, letter_grade)
+            (student_id, course_id, internal1_marks, internal2_marks, external_marks, total_marks, percentage, letter_grade)
             VALUES 
-            (:enrollment_id, :ia_marks, :assignment_marks, :final_ia_marks, :external_marks, :total_marks, :percentage, :letter_grade)
+            (:student_id, :course_id, :internal1_marks, :internal2_marks, :external_marks, :total_marks, :percentage, :letter_grade)
         """)
         
         result = db.session.execute(insert_query, {
-            'enrollment_id': data['enrollment_id'],
-            'ia_marks': ia_marks,
-            'assignment_marks': assignment_marks,
-            'final_ia_marks': final_ia_marks,
-            'external_marks': external_marks_50,
+            'student_id': data['student_id'],
+            'course_id': data['course_id'],
+            'internal1_marks': internal1_marks,
+            'internal2_marks': internal2_marks,
+            'external_marks': external_marks,
             'total_marks': total_marks,
             'percentage': percentage,
             'letter_grade': letter_grade
@@ -63,8 +51,12 @@ def create_grade():
         
         db.session.commit()
         
-        select_query = text("SELECT * FROM grades WHERE grade_id = :id")
-        grade = db.session.execute(select_query, {'id': result.lastrowid}).fetchone()
+        # Composite key - fetch by student_id and course_id
+        select_query = text("SELECT * FROM grades WHERE student_id = :student_id AND course_id = :course_id")
+        grade = db.session.execute(select_query, {
+            'student_id': data['student_id'],
+            'course_id': data['course_id']
+        }).fetchone()
         
         return jsonify({
             'message': 'Grade created successfully',
@@ -80,25 +72,38 @@ def create_grade():
 @bp.route('/', methods=['GET'])
 def get_grades():
     try:
-        query = text("""
+        student_id = request.args.get('student_id', type=int)
+        course_id = request.args.get('course_id', type=int)
+        
+        conditions = []
+        params = {}
+        
+        if student_id:
+            conditions.append("g.student_id = :student_id")
+            params['student_id'] = student_id
+        if course_id:
+            conditions.append("g.course_id = :course_id")
+            params['course_id'] = course_id
+        
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        
+        query = text(f"""
             SELECT 
                 g.*,
-                e.student_id,
-                e.course_id,
                 s.enrollment_number,
                 u.first_name as student_first_name,
                 u.last_name as student_last_name,
                 c.course_code,
                 c.course_name
             FROM grades g
-            INNER JOIN enrollments e ON g.enrollment_id = e.enrollment_id
-            INNER JOIN students s ON e.student_id = s.student_id
+            INNER JOIN students s ON g.student_id = s.student_id
             INNER JOIN users u ON s.user_id = u.user_id
-            INNER JOIN courses c ON e.course_id = c.course_id
+            INNER JOIN courses c ON g.course_id = c.course_id
+            {where_clause}
             ORDER BY g.percentage DESC
         """)
         
-        grades = db.session.execute(query).fetchall()
+        grades = db.session.execute(query, params).fetchall()
         
         return jsonify({
             'grades': [dict(row._mapping) for row in grades]
@@ -108,12 +113,15 @@ def get_grades():
         return jsonify({'error': str(e)}), 500
 
 
-# READ - Get by ID
-@bp.route('/<int:grade_id>', methods=['GET'])
-def get_grade(grade_id):
+# READ - Get by composite key (student_id, course_id)
+@bp.route('/<int:student_id>/<int:course_id>', methods=['GET'])
+def get_grade(student_id, course_id):
     try:
-        query = text("SELECT * FROM grades WHERE grade_id = :id")
-        grade = db.session.execute(query, {'id': grade_id}).fetchone()
+        query = text("SELECT * FROM grades WHERE student_id = :student_id AND course_id = :course_id")
+        grade = db.session.execute(query, {
+            'student_id': student_id,
+            'course_id': course_id
+        }).fetchone()
         
         if not grade:
             return jsonify({'error': 'Grade not found'}), 404
@@ -125,69 +133,63 @@ def get_grade(grade_id):
 
 
 # UPDATE
-@bp.route('/<int:grade_id>', methods=['PUT'])
-def update_grade(grade_id):
+@bp.route('/<int:student_id>/<int:course_id>', methods=['PUT'])
+def update_grade(student_id, course_id):
     try:
         data = request.get_json()
         
         # Get current grade
-        current_query = text("SELECT * FROM grades WHERE grade_id = :id")
-        current = db.session.execute(current_query, {'id': grade_id}).fetchone()
+        current_query = text("SELECT * FROM grades WHERE student_id = :student_id AND course_id = :course_id")
+        current = db.session.execute(current_query, {
+            'student_id': student_id,
+            'course_id': course_id
+        }).fetchone()
         
         if not current:
             return jsonify({'error': 'Grade not found'}), 404
         
-        # Get IA and Assignment marks
-        ia_marks = data.get('ia_marks', current.ia_marks)  # out of 30
-        assignment_marks = data.get('assignment_marks', current.assignment_marks)  # out of 20
-        external_marks_input = data.get('external_marks')  # This will be out of 100 from frontend
+        # Get marks with new schema (internal1, internal2, external)
+        internal1_marks = data.get('internal1_marks', current.internal1_marks)
+        internal2_marks = data.get('internal2_marks', current.internal2_marks)
+        external_marks = data.get('external_marks', current.external_marks)
         
-        # Calculate Final IA (IA + Assignment = max 50)
-        final_ia_marks = None
-        if ia_marks is not None and assignment_marks is not None:
-            final_ia_marks = float(ia_marks) + float(assignment_marks)  # Direct addition (30 + 20 = 50)
+        # Calculate average of two internals (out of 50)
+        internal_average = 0
+        if internal1_marks is not None and internal2_marks is not None:
+            internal_average = (float(internal1_marks) + float(internal2_marks)) / 2
         
-        # Convert external marks from 100 to 50 (only if provided in update)
-        external_marks_50 = current.external_marks  # Keep existing if not updated
-        if external_marks_input is not None:
-            external_marks_50 = float(external_marks_input) / 2
+        # Calculate total marks (out of 100): average of internals + external
+        total_marks = internal_average
+        if external_marks is not None:
+            total_marks += float(external_marks)
         
-        # Calculate total marks (out of 100)
-        total_marks = 0
-        if final_ia_marks is not None:
-            total_marks += final_ia_marks
-        if external_marks_50 is not None:
-            total_marks += external_marks_50
-        
-        # Calculate percentage
+        # Calculate percentage (already out of 100, so total_marks IS the percentage)
         percentage = total_marks if total_marks > 0 else 0
         
         # Calculate letter grade
         letter_grade = calculate_letter_grade(percentage) if total_marks > 0 else None
         
         # Debug logging
-        print(f"DEBUG UPDATE - IA: {ia_marks}, Assignment: {assignment_marks}, External(input): {external_marks_input}")
-        print(f"DEBUG UPDATE - Final IA: {final_ia_marks}, External(stored): {external_marks_50}")
-        print(f"DEBUG UPDATE - Total: {total_marks}, Percentage: {percentage}, Grade: {letter_grade}")
+        print(f"DEBUG UPDATE - Internal1: {internal1_marks}, Internal2: {internal2_marks}, External: {external_marks}")
+        print(f"DEBUG UPDATE - Internal Avg: {internal_average:.2f}, Total: {total_marks:.2f}/100, Percentage: {percentage:.2f}%, Grade: {letter_grade}")
         
         update_query = text("""
             UPDATE grades 
-            SET ia_marks = :ia_marks,
-                assignment_marks = :assignment_marks,
-                final_ia_marks = :final_ia_marks,
+            SET internal1_marks = :internal1_marks,
+                internal2_marks = :internal2_marks,
                 external_marks = :external_marks,
                 total_marks = :total_marks,
                 percentage = :percentage,
                 letter_grade = :letter_grade
-            WHERE grade_id = :grade_id
+            WHERE student_id = :student_id AND course_id = :course_id
         """)
         
         db.session.execute(update_query, {
-            'grade_id': grade_id,
-            'ia_marks': ia_marks,
-            'assignment_marks': assignment_marks,
-            'final_ia_marks': final_ia_marks,
-            'external_marks': external_marks_50,
+            'student_id': student_id,
+            'course_id': course_id,
+            'internal1_marks': internal1_marks,
+            'internal2_marks': internal2_marks,
+            'external_marks': external_marks,
             'total_marks': total_marks,
             'percentage': percentage,
             'letter_grade': letter_grade
@@ -203,11 +205,14 @@ def update_grade(grade_id):
 
 
 # DELETE
-@bp.route('/<int:grade_id>', methods=['DELETE'])
-def delete_grade(grade_id):
+@bp.route('/<int:student_id>/<int:course_id>', methods=['DELETE'])
+def delete_grade(student_id, course_id):
     try:
-        delete_query = text("DELETE FROM grades WHERE grade_id = :id")
-        result = db.session.execute(delete_query, {'id': grade_id})
+        delete_query = text("DELETE FROM grades WHERE student_id = :student_id AND course_id = :course_id")
+        result = db.session.execute(delete_query, {
+            'student_id': student_id,
+            'course_id': course_id
+        })
         db.session.commit()
         
         if result.rowcount == 0:

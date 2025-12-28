@@ -4,16 +4,17 @@ const authService = {
   // Login user
   login: async (email, password, role) => {
     try {
-      // Get all users and find matching one
-      const response = await api.get('/users/');
-      const users = response.data.users || [];
+      // Call authentication endpoint
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+        role
+      });
       
-      const user = users.find(u => u.email === email && u.role === role);
-      
-      if (user) {
+      if (response.data.user) {
         // Store user data
-        localStorage.setItem('user', JSON.stringify(user));
-        return { success: true, user };
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        return { success: true, user: response.data.user };
       } else {
         return { success: false, message: 'Invalid credentials or role' };
       }

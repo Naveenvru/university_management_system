@@ -12,13 +12,14 @@ def create_attendance():
         
         insert_query = text("""
             INSERT INTO attendance 
-            (enrollment_id, attendance_date, status, marked_by, notes, created_at)
+            (student_id, course_id, attendance_date, status, marked_by, notes, created_at)
             VALUES 
-            (:enrollment_id, :attendance_date, :status, :marked_by, :notes, NOW())
+            (:student_id, :course_id, :attendance_date, :status, :marked_by, :notes, NOW())
         """)
         
         result = db.session.execute(insert_query, {
-            'enrollment_id': data['enrollment_id'],
+            'student_id': data['student_id'],
+            'course_id': data['course_id'],
             'attendance_date': data['attendance_date'],
             'status': data['status'],
             'marked_by': data['marked_by'],
@@ -27,8 +28,13 @@ def create_attendance():
         
         db.session.commit()
         
-        select_query = text("SELECT * FROM attendance WHERE attendance_id = :id")
-        attendance = db.session.execute(select_query, {'id': result.lastrowid}).fetchone()
+        # Composite key - fetch by student_id, course_id, and attendance_date
+        select_query = text("SELECT * FROM attendance WHERE student_id = :student_id AND course_id = :course_id AND attendance_date = :attendance_date")
+        attendance = db.session.execute(select_query, {
+            'student_id': data['student_id'],
+            'course_id': data['course_id'],
+            'attendance_date': data['attendance_date']
+        }).fetchone()
         
         return jsonify({
             'message': 'Attendance marked successfully',
@@ -44,15 +50,19 @@ def create_attendance():
 @bp.route('/', methods=['GET'])
 def get_attendance():
     try:
-        enrollment_id = request.args.get('enrollment_id', type=int)
+        student_id = request.args.get('student_id', type=int)
+        course_id = request.args.get('course_id', type=int)
         status = request.args.get('status')
         
         conditions = []
         params = {}
         
-        if enrollment_id:
-            conditions.append("a.enrollment_id = :enrollment_id")
-            params['enrollment_id'] = enrollment_id
+        if student_id:
+            conditions.append("a.student_id = :student_id")
+            params['student_id'] = student_id
+        if course_id:
+            conditions.append("a.course_id = :course_id")
+            params['course_id'] = course_id
         if status:
             conditions.append("a.status = :status")
             params['status'] = status
@@ -62,18 +72,15 @@ def get_attendance():
         query = text(f"""
             SELECT 
                 a.*,
-                e.student_id,
-                e.course_id,
                 s.enrollment_number,
                 u.first_name as student_first_name,
                 u.last_name as student_last_name,
                 c.course_code,
                 c.course_name
             FROM attendance a
-            INNER JOIN enrollments e ON a.enrollment_id = e.enrollment_id
-            INNER JOIN students s ON e.student_id = s.student_id
+            INNER JOIN students s ON a.student_id = s.student_id
             INNER JOIN users u ON s.user_id = u.user_id
-            INNER JOIN courses c ON e.course_id = c.course_id
+            INNER JOIN courses c ON a.course_id = c.course_id
             {where_clause}
             ORDER BY a.attendance_date DESC
         """)
@@ -88,12 +95,16 @@ def get_attendance():
         return jsonify({'error': str(e)}), 500
 
 
-# READ - Get by ID
-@bp.route('/<int:attendance_id>', methods=['GET'])
-def get_single_attendance(attendance_id):
+# READ - Get by composite key (student_id, course_id, attendance_date)
+@bp.route('/<int:student_id>/<int:course_id>/<string:attendance_date>', methods=['GET'])
+def get_single_attendance(student_id, course_id, attendance_date):
     try:
-        query = text("SELECT * FROM attendance WHERE attendance_id = :id")
-        attendance = db.session.execute(query, {'id': attendance_id}).fetchone()
+        query = text("SELECT * FROM attendance WHERE student_id = :student_id AND course_id = :course_id AND attendance_date = :attendance_date")
+        attendance = db.session.execute(query, {
+            'student_id': student_id,
+            'course_id': course_id,
+            'attendance_date': attendance_date
+        }).fetchone()
         
         if not attendance:
             return jsonify({'error': 'Attendance not found'}), 404
@@ -105,13 +116,13 @@ def get_single_attendance(attendance_id):
 
 
 # UPDATE
-@bp.route('/<int:attendance_id>', methods=['PUT'])
-def update_attendance(attendance_id):
+@bp.route('/<int:student_id>/<int:course_id>/<string:attendance_date>', methods=['PUT'])
+def update_attendance(student_id, course_id, attendance_date):
     try:
         data = request.get_json()
         
         set_clauses = []
-        params = {'attendance_id': attendance_id}
+        params = {'student_id': student_id, 'course_id': course_id, 'attendance_date': attendance_date}
         
         if 'status' in data:
             set_clauses.append("status = :status")
@@ -126,7 +137,7 @@ def update_attendance(attendance_id):
         update_query = text(f"""
             UPDATE attendance 
             SET {', '.join(set_clauses)}
-            WHERE attendance_id = :attendance_id
+            WHERE student_id = :student_id AND course_id = :course_id AND attendance_date = :attendance_date
         """)
         
         db.session.execute(update_query, params)
@@ -140,11 +151,15 @@ def update_attendance(attendance_id):
 
 
 # DELETE
-@bp.route('/<int:attendance_id>', methods=['DELETE'])
-def delete_attendance(attendance_id):
+@bp.route('/<int:student_id>/<int:course_id>/<string:attendance_date>', methods=['DELETE'])
+def delete_attendance(student_id, course_id, attendance_date):
     try:
-        delete_query = text("DELETE FROM attendance WHERE attendance_id = :id")
-        result = db.session.execute(delete_query, {'id': attendance_id})
+        delete_query = text("DELETE FROM attendance WHERE student_id = :student_id AND course_id = :course_id AND attendance_date = :attendance_date")
+        result = db.session.execute(delete_query, {
+            'student_id': student_id,
+            'course_id': course_id,
+            'attendance_date': attendance_date
+        })
         db.session.commit()
         
         if result.rowcount == 0:
@@ -157,9 +172,9 @@ def delete_attendance(attendance_id):
         return jsonify({'error': str(e)}), 500
 
 
-# STATISTICS - Get attendance summary
-@bp.route('/enrollment/<int:enrollment_id>/summary', methods=['GET'])
-def get_attendance_summary(enrollment_id):
+# STATISTICS - Get attendance summary by student and course
+@bp.route('/summary/<int:student_id>/<int:course_id>', methods=['GET'])
+def get_attendance_summary(student_id, course_id):
     try:
         query = text("""
             SELECT 
@@ -169,10 +184,13 @@ def get_attendance_summary(enrollment_id):
                 SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
                 SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
             FROM attendance
-            WHERE enrollment_id = :enrollment_id
+            WHERE student_id = :student_id AND course_id = :course_id
         """)
         
-        summary = db.session.execute(query, {'enrollment_id': enrollment_id}).fetchone()
+        summary = db.session.execute(query, {
+            'student_id': student_id,
+            'course_id': course_id
+        }).fetchone()
         
         total = summary.total_classes or 0
         present = summary.present or 0
@@ -180,7 +198,8 @@ def get_attendance_summary(enrollment_id):
         
         return jsonify({
             'summary': {
-                'enrollment_id': enrollment_id,
+                'student_id': student_id,
+                'course_id': course_id,
                 'total_classes': total,
                 'present': present,
                 'absent': summary.absent or 0,

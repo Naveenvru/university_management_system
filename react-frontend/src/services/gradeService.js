@@ -7,9 +7,15 @@ const gradeService = {
     return response.data;
   },
 
-  // Get grade by ID
-  getById: async (id) => {
-    const response = await api.get(`/grades/${id}`);
+  // Get grade by composite key (student_id, course_id)
+  getById: async (student_id, course_id) => {
+    const response = await api.get(`/grades/${student_id}/${course_id}`);
+    return response.data;
+  },
+
+  // Get grade distribution statistics
+  getDistribution: async () => {
+    const response = await api.get('/grades/statistics/distribution');
     return response.data;
   },
 
@@ -20,14 +26,14 @@ const gradeService = {
   },
 
   // Update grade
-  update: async (id, gradeData) => {
-    const response = await api.put(`/grades/${id}`, gradeData);
+  update: async (student_id, course_id, gradeData) => {
+    const response = await api.put(`/grades/${student_id}/${course_id}`, gradeData);
     return response.data;
   },
 
   // Delete grade
-  delete: async (id) => {
-    const response = await api.delete(`/grades/${id}`);
+  delete: async (student_id, course_id) => {
+    const response = await api.delete(`/grades/${student_id}/${course_id}`);
     return response.data;
   },
 };

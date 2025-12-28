@@ -7,9 +7,15 @@ const attendanceService = {
     return response.data;
   },
 
-  // Get attendance by ID
-  getById: async (id) => {
-    const response = await api.get(`/attendance/${id}`);
+  // Get attendance by composite key (student_id, course_id, attendance_date)
+  getById: async (student_id, course_id, attendance_date) => {
+    const response = await api.get(`/attendance/${student_id}/${course_id}/${attendance_date}`);
+    return response.data;
+  },
+
+  // Get attendance summary for student and course
+  getSummary: async (student_id, course_id) => {
+    const response = await api.get(`/attendance/summary/${student_id}/${course_id}`);
     return response.data;
   },
 
@@ -20,14 +26,14 @@ const attendanceService = {
   },
 
   // Update attendance record
-  update: async (id, attendanceData) => {
-    const response = await api.put(`/attendance/${id}`, attendanceData);
+  update: async (student_id, course_id, attendance_date, attendanceData) => {
+    const response = await api.put(`/attendance/${student_id}/${course_id}/${attendance_date}`, attendanceData);
     return response.data;
   },
 
   // Delete attendance record
-  delete: async (id) => {
-    const response = await api.delete(`/attendance/${id}`);
+  delete: async (student_id, course_id, attendance_date) => {
+    const response = await api.delete(`/attendance/${student_id}/${course_id}/${attendance_date}`);
     return response.data;
   },
 };

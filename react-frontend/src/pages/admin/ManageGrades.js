@@ -11,8 +11,9 @@ const ManageGrades = () => {
   const [formData, setFormData] = useState({
     student_id: '',
     course_id: '',
-    grade: '',
-    grade_points: '',
+    internal1_marks: '',
+    internal2_marks: '',
+    external_marks: '',
   });
 
   useEffect(() => {
@@ -41,7 +42,8 @@ const ManageGrades = () => {
     e.preventDefault();
     try {
       if (editingGrade) {
-        await gradeService.update(editingGrade.grade_id, formData);
+        // Use composite key for update
+        await gradeService.update(editingGrade.student_id, editingGrade.course_id, formData);
       } else {
         await gradeService.create(formData);
       }
@@ -59,16 +61,17 @@ const ManageGrades = () => {
     setFormData({
       student_id: grade.student_id,
       course_id: grade.course_id,
-      grade: grade.grade,
-      grade_points: grade.grade_points,
+      internal1_marks: grade.internal1_marks || '',
+      internal2_marks: grade.internal2_marks || '',
+      external_marks: grade.external_marks || '',
     });
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (student_id, course_id) => {
     if (window.confirm('Are you sure you want to delete this grade?')) {
       try {
-        await gradeService.delete(id);
+        await gradeService.delete(student_id, course_id);
         fetchGrades();
       } catch (err) {
         setError('Failed to delete grade');
@@ -77,7 +80,7 @@ const ManageGrades = () => {
   };
 
   const resetForm = () => {
-    setFormData({ student_id: '', course_id: '', grade: '', grade_points: '' });
+    setFormData({ student_id: '', course_id: '', internal1_marks: '', internal2_marks: '', external_marks: '' });
     setEditingGrade(null);
   };
 
@@ -110,21 +113,20 @@ const ManageGrades = () => {
             </div>
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
-                <label>Grade:</label>
-                <select name="grade" value={formData.grade} onChange={handleInputChange} style={styles.input} required>
-                  <option value="">Select Grade</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="E">E</option>
-                  <option value="F">F</option>
-                </select>
+                <label>Internal 1 Marks (out of 50):</label>
+                <input type="number" step="0.01" name="internal1_marks" value={formData.internal1_marks} onChange={handleInputChange} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
-                <label>Grade Points:</label>
-                <input type="number" step="0.01" name="grade_points" value={formData.grade_points} onChange={handleInputChange} style={styles.input} required />
+                <label>Internal 2 Marks (out of 50):</label>
+                <input type="number" step="0.01" name="internal2_marks" value={formData.internal2_marks} onChange={handleInputChange} style={styles.input} required />
               </div>
+            </div>
+            <div style={styles.formRow}>
+              <div style={styles.formGroup}>
+                <label>External Marks (out of 50):</label>
+                <input type="number" step="0.01" name="external_marks" value={formData.external_marks} onChange={handleInputChange} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}></div>
             </div>
             <button type="submit" style={styles.submitButton}>
               {editingGrade ? 'Update' : 'Create'} Grade
@@ -136,32 +138,36 @@ const ManageGrades = () => {
       <table style={styles.table}>
         <thead>
           <tr>
-            <th style={styles.th}>ID</th>
             <th style={styles.th}>Student ID</th>
             <th style={styles.th}>Course ID</th>
-            <th style={styles.th}>Grade</th>
-            <th style={styles.th}>Grade Points</th>
+            <th style={styles.th}>Internal 1</th>
+            <th style={styles.th}>Internal 2</th>
+            <th style={styles.th}>External</th>
+            <th style={styles.th}>Total (100)</th>
+            <th style={styles.th}>Letter Grade</th>
             <th style={styles.th}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {grades.map((grade) => (
-            <tr key={grade.grade_id}>
-              <td style={styles.td}>{grade.grade_id}</td>
+            <tr key={`${grade.student_id}-${grade.course_id}`}>
               <td style={styles.td}>{grade.student_id}</td>
               <td style={styles.td}>{grade.course_id}</td>
+              <td style={styles.td}>{grade.internal1_marks?.toFixed(2) || '0.00'}</td>
+              <td style={styles.td}>{grade.internal2_marks?.toFixed(2) || '0.00'}</td>
+              <td style={styles.td}>{grade.external_marks?.toFixed(2) || '0.00'}</td>
+              <td style={styles.td}>{grade.total_marks?.toFixed(2) || '0.00'}</td>
               <td style={styles.td}>
                 <span style={{
                   ...styles.badge,
-                  backgroundColor: ['A+', 'A', 'A-'].includes(grade.grade) ? '#27ae60' : ['B+', 'B', 'B-'].includes(grade.grade) ? '#3498db' : '#e74c3c'
+                  backgroundColor: ['A+', 'A', 'A-'].includes(grade.letter_grade) ? '#27ae60' : ['B+', 'B', 'B-'].includes(grade.letter_grade) ? '#3498db' : '#e74c3c'
                 }}>
-                  {grade.grade}
+                  {grade.letter_grade || 'N/A'}
                 </span>
               </td>
-              <td style={styles.td}>{grade.grade_points}</td>
               <td style={styles.td}>
                 <button onClick={() => handleEdit(grade)} style={styles.editButton}>Edit</button>
-                <button onClick={() => handleDelete(grade.grade_id)} style={styles.deleteButton}>Delete</button>
+                <button onClick={() => handleDelete(grade.student_id, grade.course_id)} style={styles.deleteButton}>Delete</button>
               </td>
             </tr>
           ))}

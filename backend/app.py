@@ -15,9 +15,10 @@ CORS(app)
 db.init_app(app)
 
 # Import routes
-from routes import users, departments, students, faculty, courses, enrollments, attendance, grades
+from routes import auth, users, departments, students, faculty, courses, enrollments, attendance, grades
 
 # Register blueprints
+app.register_blueprint(auth.bp)
 app.register_blueprint(users.bp)
 app.register_blueprint(departments.bp)
 app.register_blueprint(students.bp)

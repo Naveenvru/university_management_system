@@ -49,15 +49,24 @@ def get_courses():
     try:
         query = text("""
             SELECT 
-                c.*,
+                c.course_id,
+                c.course_code,
+                c.course_name,
+                c.department_id,
+                c.faculty_id,
+                c.semester,
+                c.credits,
+                c.max_students,
+                c.total_classes,
+                c.created_at,
                 d.department_name,
-                f.employee_id,
+                f.designation,
                 u.first_name as faculty_first_name,
                 u.last_name as faculty_last_name
             FROM courses c
             INNER JOIN departments d ON c.department_id = d.department_id
-            INNER JOIN faculty f ON c.faculty_id = f.faculty_id
-            INNER JOIN users u ON f.user_id = u.user_id
+            LEFT JOIN faculty f ON c.faculty_id = f.faculty_id
+            LEFT JOIN users u ON f.user_id = u.user_id
             ORDER BY c.course_code
         """)
         
@@ -68,6 +77,9 @@ def get_courses():
         }), 200
         
     except Exception as e:
+        print(f"Error fetching courses: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

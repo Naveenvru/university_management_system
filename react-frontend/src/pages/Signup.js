@@ -20,7 +20,6 @@ const Signup = () => {
     batch: '',
     admission_date: '',
     // Faculty fields
-    employee_id: '',
     designation: '',
     qualification: '',
     joining_date: ''
@@ -75,8 +74,8 @@ const Signup = () => {
     }
 
     if (formData.role === 'faculty') {
-      if (!formData.employee_id || !formData.department_id || !formData.designation || !formData.qualification || !formData.joining_date) {
-        setError('Please fill in all faculty-specific fields (employee ID, department, designation, qualification, joining date)');
+      if (!formData.department_id || !formData.designation || !formData.qualification || !formData.joining_date) {
+        setError('Please fill in all faculty-specific fields (department, designation, qualification, joining date)');
         return;
       }
     }
@@ -292,19 +291,6 @@ const Signup = () => {
               </div>
 
               <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Employee ID: *</label>
-                  <input
-                    type="text"
-                    name="employee_id"
-                    value={formData.employee_id}
-                    onChange={handleChange}
-                    style={styles.input}
-                    placeholder="e.g., FAC001"
-                    required
-                  />
-                </div>
-
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Department: *</label>
                   <select

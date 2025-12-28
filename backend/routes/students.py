@@ -70,6 +70,7 @@ def create_student():
 def get_students():
     """Get all students using SELECT with JOIN"""
     try:
+        user_id = request.args.get('user_id', type=int)
         department_id = request.args.get('department_id', type=int)
         status = request.args.get('status')
         semester = request.args.get('semester', type=int)
@@ -82,6 +83,9 @@ def get_students():
         conditions = []
         params = {'limit': per_page, 'offset': offset}
         
+        if user_id:
+            conditions.append("s.user_id = :user_id")
+            params['user_id'] = user_id
         if department_id:
             conditions.append("s.department_id = :department_id")
             params['department_id'] = department_id

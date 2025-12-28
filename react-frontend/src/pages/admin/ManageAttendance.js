@@ -41,9 +41,19 @@ const ManageAttendance = () => {
     e.preventDefault();
     try {
       if (editingRecord) {
-        await attendanceService.update(editingRecord.attendance_id, formData);
+        // Use composite key for update
+        await attendanceService.update(
+          editingRecord.student_id, 
+          editingRecord.course_id, 
+          editingRecord.attendance_date.split('T')[0],
+          formData
+        );
       } else {
-        await attendanceService.create(formData);
+        // Add marked_by for create (use admin user_id = 1)
+        await attendanceService.create({
+          ...formData,
+          marked_by: 1 // Admin user
+        });
       }
       setShowForm(false);
       setEditingRecord(null);
@@ -65,10 +75,10 @@ const ManageAttendance = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (student_id, course_id, attendance_date) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
       try {
-        await attendanceService.delete(id);
+        await attendanceService.delete(student_id, course_id, attendance_date.split('T')[0]);
         fetchAttendance();
       } catch (err) {
         setError('Failed to delete record');
@@ -133,18 +143,17 @@ const ManageAttendance = () => {
       <table style={styles.table}>
         <thead>
           <tr>
-            <th style={styles.th}>ID</th>
             <th style={styles.th}>Student ID</th>
             <th style={styles.th}>Course ID</th>
             <th style={styles.th}>Date</th>
             <th style={styles.th}>Status</th>
+            <th style={styles.th}>Notes</th>
             <th style={styles.th}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {attendance.map((record) => (
-            <tr key={record.attendance_id}>
-              <td style={styles.td}>{record.attendance_id}</td>
+            <tr key={`${record.student_id}-${record.course_id}-${record.attendance_date}`}>
               <td style={styles.td}>{record.student_id}</td>
               <td style={styles.td}>{record.course_id}</td>
               <td style={styles.td}>{new Date(record.attendance_date).toLocaleDateString()}</td>
@@ -156,9 +165,10 @@ const ManageAttendance = () => {
                   {record.status}
                 </span>
               </td>
+              <td style={styles.td}>{record.notes || '-'}</td>
               <td style={styles.td}>
                 <button onClick={() => handleEdit(record)} style={styles.editButton}>Edit</button>
-                <button onClick={() => handleDelete(record.attendance_id)} style={styles.deleteButton}>Delete</button>
+                <button onClick={() => handleDelete(record.student_id, record.course_id, record.attendance_date)} style={styles.deleteButton}>Delete</button>
               </td>
             </tr>
           ))}

@@ -26,39 +26,54 @@ const StudentDashboard = () => {
   const fetchStudentData = async () => {
     try {
       setLoading(true);
-      // Get student info by user_id
-      const studentsData = await studentService.getAll();
-      const student = studentsData.students?.find(s => s.user_id === user.user_id);
       
-      if (student) {
-        setStudentInfo(student);
-        
-        // Fetch all courses
-        const coursesData = await courseService.getAll();
-        setCourses(coursesData.courses || []);
-        
-        // Fetch attendance for this student
-        const attendanceData = await attendanceService.getAll();
-        const studentAttendance = attendanceData.attendance?.filter(a => a.student_id === student.student_id) || [];
-        setAttendance(studentAttendance);
-        
-        // Fetch grades for this student
-        const gradesData = await gradeService.getAll();
-        const studentGrades = gradesData.grades?.filter(g => g.student_id === student.student_id) || [];
-        setGrades(studentGrades);
-        
-        // Fetch enrollments for this student
-        const enrollmentsData = await enrollmentService.getAll();
-        const studentEnrollments = enrollmentsData.enrollments?.filter(e => e.student_id === student.student_id) || [];
-        setEnrollments(studentEnrollments);
-        
-        // Calculate available courses (department courses not yet enrolled in)
-        const enrolledCourseIds = studentEnrollments.map(e => e.course_id);
-        const departmentCourses = coursesData.courses?.filter(c => 
-          c.department_id === student.department_id && !enrolledCourseIds.includes(c.course_id)
-        ) || [];
-        setAvailableCourses(departmentCourses);
+      console.log('User object:', user);
+      
+      // Get student info by user_id parameter
+      const studentsData = await studentService.getAll({ user_id: user.user_id });
+      const student = studentsData.students?.[0];
+      
+      console.log('Found student:', student);
+      
+      if (!student) {
+        console.error('No student record found for user_id:', user.user_id);
+        setLoading(false);
+        return;
       }
+      
+      setStudentInfo(student);
+      
+      // Use student_id from the fetched student record
+      const studentId = student.student_id;
+      console.log('Using student_id:', studentId);
+      
+      // Fetch all courses
+      const coursesData = await courseService.getAll();
+      setCourses(coursesData.courses || []);
+      console.log('Courses loaded:', coursesData.courses?.length);
+      
+      // Fetch attendance for this student using student_id parameter
+      const attendanceData = await attendanceService.getAll({ student_id: studentId });
+      setAttendance(attendanceData.attendance || []);
+      console.log('Attendance records:', attendanceData.attendance?.length);
+      
+      // Fetch grades for this student using student_id parameter
+      const gradesData = await gradeService.getAll({ student_id: studentId });
+      setGrades(gradesData.grades || []);
+      console.log('Grades:', gradesData.grades?.length);
+      
+      // Fetch enrollments for this student using student_id parameter
+      const enrollmentsData = await enrollmentService.getAll({ student_id: studentId });
+      setEnrollments(enrollmentsData.enrollments || []);
+      console.log('Enrollments:', enrollmentsData.enrollments?.length);
+      
+      // Calculate available courses (department courses not yet enrolled in)
+      const enrolledCourseIds = enrollmentsData.enrollments?.map(e => e.course_id) || [];
+      const departmentCourses = coursesData.courses?.filter(c => 
+        c.department_id === student.department_id && !enrolledCourseIds.includes(c.course_id)
+      ) || [];
+      setAvailableCourses(departmentCourses);
+      console.log('Available courses:', departmentCourses.length);
     } catch (err) {
       console.error('Failed to fetch student data', err);
     } finally {
@@ -221,8 +236,9 @@ const StudentDashboard = () => {
                 <tbody>
                   {enrollments.map((enrollment) => {
                     const course = courses.find(c => c.course_id === enrollment.course_id);
+                    const key = `${enrollment.student_id}-${enrollment.course_id}`;
                     return (
-                      <tr key={enrollment.enrollment_id}>
+                      <tr key={key}>
                         <td style={styles.td}>{course?.course_code || 'N/A'}</td>
                         <td style={styles.td}>{course?.course_name || 'Unknown Course'}</td>
                         <td style={styles.td}>{course?.credits || 'N/A'}</td>
@@ -344,9 +360,10 @@ const StudentDashboard = () => {
                     const attended = courseAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
                     const total = courseAttendance.length;
                     const percentage = total > 0 ? ((attended / total) * 100).toFixed(2) : 0;
+                    const key = `${enrollment.student_id}-${enrollment.course_id}`;
                     
                     return (
-                      <tr key={enrollment.enrollment_id}>
+                      <tr key={key}>
                         <td style={styles.td}>{course?.course_code || 'N/A'} - {course?.course_name || 'Unknown'}</td>
                         <td style={styles.td}>{total}</td>
                         <td style={styles.td}>{attended}</td>
@@ -390,57 +407,54 @@ const StudentDashboard = () => {
                 <thead>
                   <tr>
                     <th style={styles.th}>Course</th>
-                    <th style={styles.th}>IA (30)</th>
-                    <th style={styles.th}>Assignment (20)</th>
-                    <th style={styles.th}>Final IA (50)</th>
-                    <th style={styles.th}>External (100)</th>
-                    <th style={styles.th}>Total</th>
+                    <th style={styles.th}>Internal 1 (50)</th>
+                    <th style={styles.th}>Internal 2 (50)</th>
+                    <th style={styles.th}>Internal Avg</th>
+                    <th style={styles.th}>External (50)</th>
+                    <th style={styles.th}>Total (100)</th>
                     <th style={styles.th}>%</th>
                     <th style={styles.th}>Grade</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {grades.map((grade) => (
-                    <tr key={grade.grade_id}>
-                      <td style={styles.td}>{getCourseInfo(grade.course_id)}</td>
-                      <td style={styles.td}>{grade.ia_marks !== null ? grade.ia_marks : <em style={{color: '#999'}}>Not entered</em>}</td>
-                      <td style={styles.td}>{grade.assignment_marks !== null ? grade.assignment_marks : <em style={{color: '#999'}}>Not entered</em>}</td>
-                      <td style={styles.td}>
-                        {grade.final_ia_marks !== null ? (
-                          <strong style={{color: '#16a085'}}>{parseFloat(grade.final_ia_marks).toFixed(2)}</strong>
-                        ) : (
-                          <em style={{color: '#999'}}>Not calc</em>
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        {grade.external_marks !== null ? (
-                          `${(parseFloat(grade.external_marks) * 2).toFixed(2)}/100`
-                        ) : (
-                          <em style={{color: '#999'}}>Not entered</em>
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        <strong>{grade.total_marks ? parseFloat(grade.total_marks).toFixed(2) : 'N/A'}</strong>
-                      </td>
-                      <td style={styles.td}>{grade.percentage ? `${parseFloat(grade.percentage).toFixed(2)}%` : 'N/A'}</td>
-                      <td style={styles.td}>
-                        {grade.letter_grade ? (
-                          <span style={{
-                            ...styles.badge,
-                            backgroundColor: 
-                              grade.letter_grade === 'A+' || grade.letter_grade === 'A' || grade.letter_grade === 'A-' ? '#27ae60' : 
-                              grade.letter_grade === 'B+' || grade.letter_grade === 'B' || grade.letter_grade === 'B-' ? '#3498db' :
-                              grade.letter_grade === 'C+' || grade.letter_grade === 'C' || grade.letter_grade === 'C-' ? '#f39c12' :
-                              grade.letter_grade === 'D' ? '#e67e22' : '#e74c3c'
-                          }}>
-                            {grade.letter_grade}
-                          </span>
-                        ) : (
-                          <em style={{color: '#999'}}>Not graded</em>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {grades.map((grade) => {
+                    const key = `${grade.student_id}-${grade.course_id}`;
+                    const internal1 = grade.internal1_marks !== null && grade.internal1_marks !== undefined ? parseFloat(grade.internal1_marks) : 0;
+                    const internal2 = grade.internal2_marks !== null && grade.internal2_marks !== undefined ? parseFloat(grade.internal2_marks) : 0;
+                    const internalAvg = (internal1 + internal2) / 2;
+                    
+                    return (
+                      <tr key={key}>
+                        <td style={styles.td}>{getCourseInfo(grade.course_id)}</td>
+                        <td style={styles.td}>{grade.internal1_marks !== null && grade.internal1_marks !== undefined ? parseFloat(grade.internal1_marks).toFixed(2) : <em style={{color: '#999'}}>Not entered</em>}</td>
+                        <td style={styles.td}>{grade.internal2_marks !== null && grade.internal2_marks !== undefined ? parseFloat(grade.internal2_marks).toFixed(2) : <em style={{color: '#999'}}>Not entered</em>}</td>
+                        <td style={styles.td}>
+                          <strong style={{color: '#3498db'}}>{internalAvg.toFixed(2)}</strong>
+                        </td>
+                        <td style={styles.td}>{grade.external_marks !== null && grade.external_marks !== undefined ? parseFloat(grade.external_marks).toFixed(2) : <em style={{color: '#999'}}>Not entered</em>}</td>
+                        <td style={styles.td}>
+                          <strong>{grade.total_marks !== null && grade.total_marks !== undefined ? parseFloat(grade.total_marks).toFixed(2) : 'N/A'}</strong>
+                        </td>
+                        <td style={styles.td}>{grade.percentage ? `${parseFloat(grade.percentage).toFixed(2)}%` : 'N/A'}</td>
+                        <td style={styles.td}>
+                          {grade.letter_grade ? (
+                            <span style={{
+                              ...styles.badge,
+                              backgroundColor: 
+                                ['A+', 'A', 'A-'].includes(grade.letter_grade) ? '#27ae60' : 
+                                ['B+', 'B', 'B-'].includes(grade.letter_grade) ? '#3498db' :
+                                ['C+', 'C', 'C-'].includes(grade.letter_grade) ? '#f39c12' :
+                                grade.letter_grade === 'D' ? '#e67e22' : '#e74c3c'
+                            }}>
+                              {grade.letter_grade}
+                            </span>
+                          ) : (
+                            <em style={{color: '#999'}}>Not graded</em>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </>

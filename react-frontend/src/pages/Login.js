@@ -105,13 +105,6 @@ const Login = () => {
         <div style={styles.signupLink}>
           <p>Don't have an account? <Link to="/signup" style={styles.link}>Sign up here</Link></p>
         </div>
-
-        <div style={styles.testCredentials}>
-          <h4>Test Credentials:</h4>
-          <p>Admin: admin@university.edu / password123</p>
-          <p>Faculty: faculty1@university.edu / password123</p>
-          <p>Student: student1@university.edu / password123</p>
-        </div>
       </div>
     </div>
   );

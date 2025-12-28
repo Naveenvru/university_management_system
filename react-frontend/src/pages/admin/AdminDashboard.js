@@ -11,14 +11,9 @@ const AdminDashboard = () => {
           <h3 style={styles.sidebarTitle}>Admin Panel</h3>
           <nav style={styles.nav}>
             <Link to="/admin" style={styles.link}>Dashboard Home</Link>
-            <Link to="/admin/students" style={styles.link}>Manage Students</Link>
-            <Link to="/admin/faculty" style={styles.link}>Manage Faculty</Link>
             <Link to="/admin/departments" style={styles.link}>Manage Departments</Link>
             <Link to="/admin/courses" style={styles.link}>Manage Courses</Link>
             <Link to="/admin/enrollments" style={styles.link}>Manage Enrollments</Link>
-            <Link to="/admin/attendance" style={styles.link}>Manage Attendance</Link>
-            <Link to="/admin/grades" style={styles.link}>Manage Grades</Link>
-            <Link to="/admin/users" style={styles.link}>Manage Users</Link>
           </nav>
         </aside>
         <main style={styles.main}>

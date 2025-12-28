@@ -28,8 +28,12 @@ def create_enrollment():
         
         db.session.commit()
         
-        select_query = text("SELECT * FROM enrollments WHERE enrollment_id = :id")
-        enrollment = db.session.execute(select_query, {'id': result.lastrowid}).fetchone()
+        # Composite key - fetch by student_id and course_id
+        select_query = text("SELECT * FROM enrollments WHERE student_id = :student_id AND course_id = :course_id")
+        enrollment = db.session.execute(select_query, {
+            'student_id': data['student_id'],
+            'course_id': data['course_id']
+        }).fetchone()
         
         return jsonify({
             'message': 'Enrollment created successfully',
@@ -86,12 +90,15 @@ def get_enrollments():
         return jsonify({'error': str(e)}), 500
 
 
-# READ - Get by ID
-@bp.route('/<int:enrollment_id>', methods=['GET'])
-def get_enrollment(enrollment_id):
+# READ - Get by composite key (student_id, course_id)
+@bp.route('/<int:student_id>/<int:course_id>', methods=['GET'])
+def get_enrollment(student_id, course_id):
     try:
-        query = text("SELECT * FROM enrollments WHERE enrollment_id = :id")
-        enrollment = db.session.execute(query, {'id': enrollment_id}).fetchone()
+        query = text("SELECT * FROM enrollments WHERE student_id = :student_id AND course_id = :course_id")
+        enrollment = db.session.execute(query, {
+            'student_id': student_id,
+            'course_id': course_id
+        }).fetchone()
         
         if not enrollment:
             return jsonify({'error': 'Enrollment not found'}), 404
@@ -103,13 +110,13 @@ def get_enrollment(enrollment_id):
 
 
 # UPDATE
-@bp.route('/<int:enrollment_id>', methods=['PUT'])
-def update_enrollment(enrollment_id):
+@bp.route('/<int:student_id>/<int:course_id>', methods=['PUT'])
+def update_enrollment(student_id, course_id):
     try:
         data = request.get_json()
         
         set_clauses = []
-        params = {'enrollment_id': enrollment_id}
+        params = {'student_id': student_id, 'course_id': course_id}
         
         if 'status' in data:
             set_clauses.append("status = :status")
@@ -124,8 +131,11 @@ def update_enrollment(enrollment_id):
         # Auto-calculate attendance percentage
         if 'classes_attended' in data or 'classes_held' in data:
             # Get current values if not provided
-            current_query = text("SELECT classes_attended, classes_held FROM enrollments WHERE enrollment_id = :id")
-            current = db.session.execute(current_query, {'id': enrollment_id}).fetchone()
+            current_query = text("SELECT classes_attended, classes_held FROM enrollments WHERE student_id = :student_id AND course_id = :course_id")
+            current = db.session.execute(current_query, {
+                'student_id': student_id,
+                'course_id': course_id
+            }).fetchone()
             
             attended = data.get('classes_attended', current.classes_attended)
             held = data.get('classes_held', current.classes_held)
@@ -144,7 +154,7 @@ def update_enrollment(enrollment_id):
         update_query = text(f"""
             UPDATE enrollments 
             SET {', '.join(set_clauses)}
-            WHERE enrollment_id = :enrollment_id
+            WHERE student_id = :student_id AND course_id = :course_id
         """)
         
         db.session.execute(update_query, params)
@@ -158,11 +168,14 @@ def update_enrollment(enrollment_id):
 
 
 # DELETE
-@bp.route('/<int:enrollment_id>', methods=['DELETE'])
-def delete_enrollment(enrollment_id):
+@bp.route('/<int:student_id>/<int:course_id>', methods=['DELETE'])
+def delete_enrollment(student_id, course_id):
     try:
-        delete_query = text("DELETE FROM enrollments WHERE enrollment_id = :id")
-        result = db.session.execute(delete_query, {'id': enrollment_id})
+        delete_query = text("DELETE FROM enrollments WHERE student_id = :student_id AND course_id = :course_id")
+        result = db.session.execute(delete_query, {
+            'student_id': student_id,
+            'course_id': course_id
+        })
         db.session.commit()
         
         if result.rowcount == 0:

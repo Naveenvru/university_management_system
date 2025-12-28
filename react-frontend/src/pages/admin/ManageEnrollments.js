@@ -55,7 +55,8 @@ const ManageEnrollments = () => {
     e.preventDefault();
     try {
       if (editingEnrollment) {
-        await enrollmentService.update(editingEnrollment.enrollment_id, formData);
+        // Use composite key for update
+        await enrollmentService.update(editingEnrollment.student_id, editingEnrollment.course_id, formData);
       } else {
         await enrollmentService.create(formData);
       }
@@ -80,10 +81,10 @@ const ManageEnrollments = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (student_id, course_id) => {
     if (window.confirm('Are you sure you want to delete this enrollment?')) {
       try {
-        await enrollmentService.delete(id);
+        await enrollmentService.delete(student_id, course_id);
         fetchData();
       } catch (err) {
         setError('Failed to delete enrollment');
@@ -223,8 +224,8 @@ const ManageEnrollments = () => {
         <tbody>
           {enrollments.length > 0 ? (
             enrollments.map((enrollment) => (
-              <tr key={enrollment.enrollment_id}>
-                <td style={styles.td}>{enrollment.enrollment_id}</td>
+              <tr key={`${enrollment.student_id}-${enrollment.course_id}`}>
+                <td style={styles.td}>{enrollment.student_id}-{enrollment.course_id}</td>
                 <td style={styles.td}>{enrollment.student_id}</td>
                 <td style={styles.td}>{getCourseName(enrollment.course_id)}</td>
                 <td style={styles.td}>
@@ -234,14 +235,14 @@ const ManageEnrollments = () => {
                 <td style={styles.td}>
                   <span style={{
                     ...styles.badge,
-                    backgroundColor: enrollment.is_active ? '#27ae60' : '#e74c3c'
+                    backgroundColor: enrollment.status === 'enrolled' ? '#27ae60' : '#e74c3c'
                   }}>
-                    {enrollment.is_active ? 'Active' : 'Inactive'}
+                    {enrollment.status || 'N/A'}
                   </span>
                 </td>
                 <td style={styles.td}>
                   <button onClick={() => handleEdit(enrollment)} style={styles.editButton}>Edit</button>
-                  <button onClick={() => handleDelete(enrollment.enrollment_id)} style={styles.deleteButton}>Delete</button>
+                  <button onClick={() => handleDelete(enrollment.student_id, enrollment.course_id)} style={styles.deleteButton}>Delete</button>
                 </td>
               </tr>
             ))

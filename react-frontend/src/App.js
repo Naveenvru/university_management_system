@@ -8,10 +8,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminHome from './pages/admin/AdminHome';
-import ManageStudents from './pages/admin/ManageStudents';
-import ManageFaculty from './pages/admin/ManageFaculty';
-import ManageAttendance from './pages/admin/ManageAttendance';
-import ManageGrades from './pages/admin/ManageGrades';
+import ManageDepartments from './pages/admin/ManageDepartments';
+import ManageCourses from './pages/admin/ManageCourses';
 import ManageEnrollments from './pages/admin/ManageEnrollments';
 import FacultyDashboard from './pages/FacultyDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -35,11 +33,9 @@ function App() {
             }
           >
             <Route index element={<AdminHome />} />
-            <Route path="students" element={<ManageStudents />} />
-            <Route path="faculty" element={<ManageFaculty />} />
+            <Route path="departments" element={<ManageDepartments />} />
+            <Route path="courses" element={<ManageCourses />} />
             <Route path="enrollments" element={<ManageEnrollments />} />
-            <Route path="attendance" element={<ManageAttendance />} />
-            <Route path="grades" element={<ManageGrades />} />
           </Route>
 
           {/* Faculty Routes */}
