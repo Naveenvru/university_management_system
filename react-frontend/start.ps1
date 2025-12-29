@@ -21,9 +21,9 @@ Write-Host ""
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host "Test Login Credentials:" -ForegroundColor Cyan
 Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "Admin:   admin@university.edu / password123" -ForegroundColor White
-Write-Host "Faculty: faculty1@university.edu / password123" -ForegroundColor White
-Write-Host "Student: student1@university.edu / password123" -ForegroundColor White
+Write-Host "Admin:   admin@university.edu / admin123" -ForegroundColor White
+Write-Host "Faculty: rajesh.kumar@university.edu / password123" -ForegroundColor White
+Write-Host "Student: aarav.sharma.cse1@university.edu / password123" -ForegroundColor White
 Write-Host ""
 
 Write-Host "======================================" -ForegroundColor Cyan
