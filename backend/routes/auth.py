@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from database import db
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
+from config import Config
+from auth_utils import generate_access_token, token_required
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -60,11 +62,25 @@ def login():
                 user_data['faculty_id'] = faculty.faculty_id
                 user_data['department_id'] = faculty.department_id
         
+        access_token = generate_access_token(
+            user_id=user.user_id,
+            role=user.role,
+            expires_in_seconds=Config.ACCESS_TOKEN_EXPIRES_SECONDS
+        )
+
         return jsonify({
             'message': 'Login successful',
-            'user': user_data
+            'user': user_data,
+            'token': access_token
         }), 200
         
     except Exception as e:
         print(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed'}), 500
+
+
+@bp.route('/me', methods=['GET'])
+@token_required()
+def me():
+    """Return minimal identity data for currently authenticated user."""
+    return jsonify({'user': request.user}), 200

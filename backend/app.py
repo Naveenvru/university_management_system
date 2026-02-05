@@ -1,8 +1,10 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from config import Config
 from database import db
 from sqlalchemy import text
+import jwt
+from auth_utils import decode_access_token
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -27,6 +29,48 @@ app.register_blueprint(courses.bp)
 app.register_blueprint(enrollments.bp)
 app.register_blueprint(attendance.bp)
 app.register_blueprint(grades.bp)
+
+
+@app.before_request
+def authenticate_api_requests():
+    """Require bearer token for protected API routes."""
+    if request.method == 'OPTIONS':
+        return None
+
+    path = request.path or ''
+    if not path.startswith('/api/'):
+        return None
+
+    public_routes = {
+        '/api/health',
+        '/api/auth/login',
+    }
+
+    # Allow public signup via users create endpoint.
+    if path in public_routes or (path == '/api/users/' and request.method == 'POST'):
+        return None
+
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Authorization token is missing'}), 401
+
+    token = auth_header.split(' ', 1)[1].strip()
+    if not token:
+        return jsonify({'error': 'Authorization token is missing'}), 401
+
+    try:
+        payload = decode_access_token(token)
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    request.user = {
+        'user_id': payload.get('sub'),
+        'role': payload.get('role'),
+    }
+
+    return None
 
 @app.route('/')
 def index():
