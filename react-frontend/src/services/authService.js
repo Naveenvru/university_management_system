@@ -11,12 +11,13 @@ const authService = {
         role
       });
       
-      if (response.data.user) {
-        // Store user data
+      if (response.data.user && response.data.token) {
+        // Store auth data
+        localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         return { success: true, user: response.data.user };
       } else {
-        return { success: false, message: 'Invalid credentials or role' };
+        return { success: false, message: 'Invalid credentials, role, or token response' };
       }
     } catch (error) {
       console.error('Login error:', error);
